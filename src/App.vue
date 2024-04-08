@@ -1,93 +1,122 @@
 <script setup>
-import { computed, ref, onMounted, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 
 const projSettings = {
-    shaftCount: 2,
-    floorCount: 7,
+    shaftCount: 3,
+    floorCount: 10,
 };
 
 let floors = [];
-for (let i = projSettings.floorCount; i > 0; i--) {
+for (let i = 0; i < projSettings.floorCount; i++) {
     floors.push(i)
 }
+floors.reverse()
 
-let shaftsArr = [];
+let shafts = [];
+for (let i = 0; i < projSettings.shaftCount; i++) {
+    shafts.push(i);
+}
+
 let objLift = {};
 for (let i = 0; i < projSettings.shaftCount; i++) {
-    shaftsArr.push(i);
     objLift[i] = {
-        floor: 1,
-        realFloor: projSettings.floorCount,
+        floor: 0,
+        renderFloor: projSettings.floorCount,
         atWork: false,
         nextFloor: 0,
+        direction: 0,
     };
 }
-let queueOfLifts = reactive(objLift);
-
-let liftRef = ref([]);
-let shafts = ref(shaftsArr);
-
+let lifts = reactive(objLift);
 let queueOfCalls = reactive(new Set());
-
-let direction = ref(null);
-
-
-function getNearestFreeLift(button) {
-    let diff = projSettings.floorCount;
-    let nearest = -1;
-    for (const lift in queueOfLifts) {
-        if (queueOfLifts[lift]['atWork']) continue;
-        else if (diff > Math.abs(queueOfLifts[lift].floor - button)) {
-            nearest = queueOfLifts[lift].floor;
-            diff = Math.abs(queueOfLifts[lift].floor - button);
-        }
-    }
-    return nearest;
-}
-
-
-async function stopWaiting(queue, q) {
-    direction.value = 0;
-    queue.delete(q);
-    q.event.target.style.backgroundColor = 'bisque';
-    liftRef.value[1].className = 'liftBlink';
-    await delay(3000);
-    liftRef.value[1].className = 'lift';
-}
-
-async function moveLift(queue, lift) {
-    queueOfLifts[lift].atWork = true;
-    for (let q of queue) {
-        direction.value = getDirection(queueOfLifts[lift].floor, q.floor);
-        let counts = Math.abs(queueOfLifts[lift].floor - q.floor);
-        queueOfLifts[lift].nextFloor = q.floor;
-
-        for (let i = counts; i > 0; i--) {
-            await delay(1000);
-            queueOfLifts[lift].floor = queueOfLifts[lift].floor + direction.value;
-            queueOfLifts[lift].realFloor = projSettings.floorCount +1 - queueOfLifts[lift].floor;
-        }
-        await stopWaiting(queue, q);
-    }
-    queueOfLifts[lift].atWork = false;
-}
-
-
+let liftRef = ref([]);
 
 function callLift(e, floorBtn) {
     let objCall = {
         floor: floorBtn,
         event: e,
     };
+
     if (!queueOfCalls.has(objCall)) {
         e.target.style.backgroundColor = 'red';
         queueOfCalls.add(objCall);
-        let nearestLift = getNearestFreeLift(floorBtn);
-        if (queueOfLifts[nearestLift].atWork == false) {
-            moveLift(queueOfCalls, nearestLift);
-        }
+    }
+
+    let nearestLift = getNearestFreeLift(floorBtn);
+    if (nearestLift == -1) return; 
+    if (lifts[nearestLift].atWork == false) {
+        moveLift(nearestLift);
+    } else {
+        return;
     }
 }
+
+async function moveLift(lift) {
+    lifts[lift].atWork = true;
+    let [targetFloor] = queueOfCalls;
+    queueOfCalls.delete(targetFloor);
+    lifts[lift].direction = getDirection(lifts[lift].floor, targetFloor.floor);
+    let counts = Math.abs(lifts[lift].floor - targetFloor.floor);
+    lifts[lift].nextFloor = targetFloor.floor;
+
+    for (let i = counts; i > 0; i--) {
+        await delay(1000);
+        lifts[lift].floor = lifts[lift].floor + lifts[lift].direction;
+        lifts[lift].renderFloor = projSettings.floorCount - lifts[lift].floor;
+        console.log(queueOfCalls.size);
+        console.log(lifts);
+    }
+    
+    await stopWaiting(queueOfCalls, targetFloor, lift);
+    lifts[lift].atWork = false;
+
+    if (queueOfCalls.size > 0) {
+        let [nextTargetFloor] = queueOfCalls;
+        let nearestLift = getNearestFreeLift(nextTargetFloor.floor);
+        if (lifts[nearestLift].atWork == false) {
+            moveLift(nearestLift);
+        }
+    } 
+
+
+    
+}
+
+function getNearestFreeLift(button) {
+    // console.log('call getNearestFreeLift', button)
+    let diff = projSettings.floorCount;
+    let nearest = -1;
+    for (const lift in lifts) {
+        if (lifts[lift]['atWork']) {
+            // console.log('лифт в работе ', lift)
+            continue;
+        }
+        else if (diff > Math.abs(lifts[lift].floor - button)) {
+            // console.log('лифт свободен ', lift)
+            nearest = lift;
+            diff = Math.abs(lifts[lift].floor - button);
+        }
+    }
+    // console.log('nearest лифт ', nearest)
+    return nearest;
+}
+
+
+async function stopWaiting(queue, q, lift) {
+    lifts[lift].direction = 0;
+    q.event.target.style.backgroundColor = 'bisque';
+    // queue.delete(q);
+    
+    liftRef.value[lift].className = 'liftBlink';
+    await delay(3000);
+    liftRef.value[lift].className = 'lift';
+}
+
+
+
+
+
+
 
 function delay(ms) {
     return new Promise((resolve, reject) => setTimeout(() => resolve(ms), ms));
@@ -107,19 +136,20 @@ function getDirection(from, to) {
 <template>
     <div className="commonArea">
         <div className="callButtons">
-            <div className="floor" v-for="floor in projSettings.floorCount">
-                <span>Этаж {{ floor }}</span>
-                <span :id="floor + '_btn'" className="btn" @click="callLift($event, floor)">Вызвать</span>
+            <div className="floor" v-for="floor in floors">
+                <span>Этаж {{ floor + 1 }}</span>
+                <span className="btn" @click="callLift($event, floor)">Вызвать</span>
             </div>
         </div>
-        
+
         <div className="liftShaft" v-for="shaft in shafts">
             <div className="liftExits" v-for="floor in floors">
-                <span :style="{ fontSize: 2 + 'rem' }">{{ floor }}</span>
+                <span :style="{ fontSize: 2 + 'rem' }">{{ floor + 1 }}</span>
             </div>
-            <div ref="liftRef" className="lift" :style="{gridRowStart: queueOfLifts[shaft].realFloor, gridRowEnd: queueOfLifts[shaft].realFloor}">
-                <span v-if="direction == 1">Вверх ↑ на {{ queueOfLifts[shaft].nextFloor }} этаж</span>
-                <span v-else-if="direction == -1">Вниз ↓ на {{ queueOfLifts[shaft].nextFloor }} этаж</span>
+            <div ref="liftRef" className="lift"
+                :style="{ gridRowStart: lifts[shaft].renderFloor, gridRowEnd: lifts[shaft].renderFloor }">
+                <span v-if="lifts[shaft].direction == 1">Вверх ↑ на {{ lifts[shaft].nextFloor + 1 }} этаж</span>
+                <span v-else-if="lifts[shaft].direction == -1">Вниз ↓ на {{ lifts[shaft].nextFloor + 1 }} этаж</span>
                 <span v-else></span>
             </div>
         </div>
@@ -140,7 +170,7 @@ function getDirection(from, to) {
 
 .callButtons {
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     width: 10%;
     border: solid 4px rgb(23, 251, 244);
 }
@@ -166,8 +196,8 @@ function getDirection(from, to) {
     height: 100%;
     position: absolute;
 
-    display: flex; 
-    justify-content: center; 
+    display: flex;
+    justify-content: center;
     align-items: center;
 }
 
@@ -182,8 +212,8 @@ function getDirection(from, to) {
     animation-timing-function: linear;
     animation-iteration-count: infinite;
 
-    display: flex; 
-    justify-content: center; 
+    display: flex;
+    justify-content: center;
     align-items: center;
 }
 
@@ -198,10 +228,12 @@ function getDirection(from, to) {
         background: rgba(255, 255, 255, 0);
         color: rgba(0, 0, 0, 0);
     }
+
     50% {
         background: rgba(0, 187, 78, 0.74);
         color: rgb(255, 255, 255);
     }
+
     to {
         background: rgba(255, 255, 255, 0);
         color: rgba(0, 0, 0, 0);
