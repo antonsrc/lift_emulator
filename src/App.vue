@@ -22,7 +22,7 @@ let liftRef = ref([]);
 let queueOfCalls = reactive(new Set());
 
 let objLift = {};
-if (LOC_STOR.length == 0) {
+if (LOC_STOR.length == 0 || LOC_STOR.getItem('lifts') == 'null') {
     for (let i = 0; i < projSettings.shaftCount; i++) {
         objLift[i] = {
             floor: 0,
