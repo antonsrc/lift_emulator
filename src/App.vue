@@ -88,7 +88,6 @@ async function moveLift(lift) {
     
     await stopWaiting(targetFloor, lift);
     lifts[lift].atWork = false;
-
     if (queueOfCalls.size > 0) {
         let [nextTargetFloor] = queueOfCalls;
         let nearestLift = getNearestFreeLift(nextTargetFloor.floor);
