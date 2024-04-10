@@ -25,11 +25,11 @@ let objLift = {};
 if (LOC_STOR.length == 0 || LOC_STOR.getItem('lifts') == 'null') {
     for (let i = 0; i < projSettings.shaftCount; i++) {
         objLift[i] = {
-            floor: 0,
-            renderFloor: projSettings.floorCount,
             atWork: false,
-            nextFloor: 0,
             direction: 0,
+            nowFloor: 0,
+            nowFloorRender: projSettings.floorCount,
+            targetFloor: 0,
         };
     }
 } else {
@@ -40,7 +40,7 @@ if (LOC_STOR.length == 0 || LOC_STOR.getItem('lifts') == 'null') {
     // let queue = JSON.parse(LOC_STOR.getItem('queueOfCalls'));
     // queue.forEach(item => {
     //     let objCall = {
-    //         floor: item[0],
+    //         nowFloor: item[0],
     //         event: item[1],
     //     };
     //     set.add(objCall);
@@ -53,18 +53,27 @@ window.addEventListener('unload', function () {
     // LOC_STOR.setItem('queueOfCalls', JSON.stringify(Array.from(queueOfCalls)));
 })
 
-function callLift(e, floorBtn) {
-    let objCall = {
-        floor: floorBtn,
-        event: e,
-    };
-    if (!queueOfCalls.has(objCall)) {
+function initial() {
+    for (let i = 0; i < projSettings.shaftCount; i++) {
+        lifts[i] = {
+            atWork: false,
+            direction: 0,
+            nowFloor: 0,
+            nowFloorRender: projSettings.floorCount,
+            targetFloor: 0,
+        };
+    }
+}
+
+function callLift(e) {
+    let btnFloor = +e.target.id.split('_')[1];
+    if (!queueOfCalls.has(btnFloor)) {
         e.target.style.backgroundColor = 'red';
-        queueOfCalls.add(objCall);
+        queueOfCalls.add(btnFloor);
     }
 
-    let nearestLift = getNearestFreeLift(floorBtn);
-    if (nearestLift == -1) return; 
+    let nearestLift = getNearestFreeLift(btnFloor);
+    if (nearestLift == -1) return;
     if (lifts[nearestLift].atWork == false) {
         moveLift(nearestLift);
     } else {
@@ -76,21 +85,20 @@ async function moveLift(lift) {
     lifts[lift].atWork = true;
     let [targetFloor] = queueOfCalls;
     queueOfCalls.delete(targetFloor);
-    lifts[lift].direction = getDirection(lifts[lift].floor, targetFloor.floor);
-    let counts = Math.abs(lifts[lift].floor - targetFloor.floor);
-    lifts[lift].nextFloor = targetFloor.floor;
+    lifts[lift].direction = getDirection(lifts[lift].nowFloor, targetFloor);
+    let counts = Math.abs(lifts[lift].nowFloor - targetFloor);
+    lifts[lift].targetFloor = targetFloor;
 
     for (let i = counts; i > 0; i--) {
         await delay(1000);
-        lifts[lift].floor = lifts[lift].floor + lifts[lift].direction;
-        lifts[lift].renderFloor = projSettings.floorCount - lifts[lift].floor;
+        lifts[lift].nowFloor = lifts[lift].nowFloor + lifts[lift].direction;
+        lifts[lift].nowFloorRender = projSettings.floorCount - lifts[lift].nowFloor;
     }
-    
+
     await stopWaiting(targetFloor, lift);
     lifts[lift].atWork = false;
     if (queueOfCalls.size > 0) {
-        let [nextTargetFloor] = queueOfCalls;
-        let nearestLift = getNearestFreeLift(nextTargetFloor.floor);
+        let nearestLift = getNearestFreeLift(targetFloor);
         if (lifts[nearestLift].atWork == false) {
             moveLift(nearestLift);
         }
@@ -104,9 +112,9 @@ function getNearestFreeLift(button) {
         if (lifts[lift]['atWork']) {
             continue;
         }
-        else if (diff > Math.abs(lifts[lift].floor - button)) {
+        else if (diff > Math.abs(lifts[lift].nowFloor - button)) {
             nearest = lift;
-            diff = Math.abs(lifts[lift].floor - button);
+            diff = Math.abs(lifts[lift].nowFloor - button);
         }
     }
     return nearest;
@@ -114,7 +122,7 @@ function getNearestFreeLift(button) {
 
 async function stopWaiting(q, lift) {
     lifts[lift].direction = 0;
-    q.event.target.style.backgroundColor = 'bisque';
+    document.getElementById(`btn_${q}`).style.backgroundColor = 'bisque';
     liftRef.value[lift].className = 'liftBlink';
     await delay(3000);
     liftRef.value[lift].className = 'lift';
@@ -140,7 +148,7 @@ function getDirection(from, to) {
         <div className="callButtons">
             <div className="floor" v-for="floor in floors">
                 <span>Этаж {{ floor + 1 }}</span>
-                <span :id="floor + '_btn'" className="btn" @click="callLift($event, floor)">Вызвать</span>
+                <span :id="'btn_' + floor" className="btn" @click="callLift">Вызвать</span>
             </div>
         </div>
 
@@ -149,13 +157,14 @@ function getDirection(from, to) {
                 <span :style="{ fontSize: 2 + 'rem' }">{{ floor + 1 }}</span>
             </div>
             <div ref="liftRef" className="lift"
-                :style="{ gridRowStart: lifts[shaft].renderFloor, gridRowEnd: lifts[shaft].renderFloor }">
-                <span v-if="lifts[shaft].direction == 1">Вверх ↑ на {{ lifts[shaft].nextFloor + 1 }} этаж</span>
-                <span v-else-if="lifts[shaft].direction == -1">Вниз ↓ на {{ lifts[shaft].nextFloor + 1 }} этаж</span>
+                :style="{ gridRowStart: lifts[shaft].nowFloorRender, gridRowEnd: lifts[shaft].nowFloorRender }">
+                <span v-if="lifts[shaft].direction == 1">Вверх ↑ на {{ lifts[shaft].targetFloor + 1 }} этаж</span>
+                <span v-else-if="lifts[shaft].direction == -1">Вниз ↓ на {{ lifts[shaft].targetFloor + 1 }} этаж</span>
                 <span v-else></span>
             </div>
         </div>
     </div>
+    <button @click="initial">Сбросить на начальные позиции</button>
 </template>
 
 <style scoped>
