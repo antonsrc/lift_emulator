@@ -1,5 +1,21 @@
 <script setup>
 import { ref, reactive } from 'vue'
+import { storeToRefs } from 'pinia'
+// import { useStore, getDefaultSettings } from './store'
+
+// const store = useStore();
+// const { settings } = storeToRefs(store);
+
+// const handleToggleFontSizeClick = () => {
+//     store.update({
+//         fontSize: settings.value.fontSize === 14 ? 24 : 14,
+//     })
+// }
+
+
+// console.log(getDefaultSettings(2))
+
+
 
 const LOC_STOR = window.localStorage;
 const projSettings = {
@@ -165,6 +181,12 @@ function getDirection(from, to) {
         </div>
     </div>
     <button @click="initial">Сбросить на начальные позиции</button>
+
+    <!-- <div>
+        <p>the font size is {{ settings.fontSize }}</p>
+        <button @click="handleToggleFontSizeClick">Switch</button>
+    </div> -->
+
 </template>
 
 <style scoped>
