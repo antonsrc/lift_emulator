@@ -158,7 +158,7 @@ function getDirection(from, to) {
         </div>
 
     </div>
-    <div :style="{marginTop: '15px'}">
+    <div :style="{ marginTop: '15px' }">
         <span id="btnInitial" @click="initial">Сбросить на начальные позиции</span>
     </div>
 </template>
@@ -168,7 +168,6 @@ function getDirection(from, to) {
     display: flex;
     gap: 3px;
     flex-direction: row;
-    font-size: 1rem;
     font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -187,22 +186,23 @@ function getDirection(from, to) {
 
 .floor {
     border: solid 1px rgb(255, 241, 223);
-    height: 40px;
-    justify-content: right;
+    width: 100%;
+    height: 60px;
+    justify-content: center;
     align-items: center;
     display: flex;
+    flex-direction: column;
 }
 
 .callButtons {
     display: grid;
-    grid-template-rows: repeat(v-bind('floorCount'), 40px);
+    grid-template-rows: repeat(v-bind('floorCount'), 60px);
     grid-gap: 3px;
-    width: 15%;
 }
 
 .liftShaft {
     display: grid;
-    grid-template-rows: repeat(v-bind('floorCount'), 40px);
+    grid-template-rows: repeat(v-bind('floorCount'), 60px);
     grid-gap: 3px;
     width: 20%;
     position: relative;
@@ -210,7 +210,7 @@ function getDirection(from, to) {
 
 .liftExits {
     border: solid 1px rgba(0, 198, 83, 0.508);
-    height: 40px;
+    height: 60px;
     font-size: 1.5rem;
     align-items: center;
     display: flex;
@@ -271,6 +271,19 @@ function getDirection(from, to) {
     to {
         background: rgba(255, 255, 255, 0);
         color: rgba(0, 0, 0, 0);
+    }
+}
+
+@media screen {
+    .commonArea {
+        font-size: 1rem;
+    }
+
+}
+
+@media screen and (max-width: 600px) {
+    .commonArea {
+        font-size: 0.8rem;
     }
 }
 </style>
