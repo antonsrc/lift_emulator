@@ -1,50 +1,31 @@
 <script setup>
-import { ref, reactive } from 'vue'
-import { storeToRefs } from 'pinia'
-// import { useStore, getDefaultSettings } from './store'
+import { ref, reactive, computed } from 'vue'
+import json from './settings.json'
 
-// const store = useStore();
-// const { settings } = storeToRefs(store);
-
-// const handleToggleFontSizeClick = () => {
-//     store.update({
-//         fontSize: settings.value.fontSize === 14 ? 24 : 14,
-//     })
-// }
-
-
-// console.log(getDefaultSettings(2))
-
-
-
+const [floorCount, shaftCount] = importSettings(json);
 const LOC_STOR = window.localStorage;
-const projSettings = {
-    shaftCount: 3,
-    floorCount: 10,
-};
 
 let floors = [];
-for (let i = 0; i < projSettings.floorCount; i++) {
+for (let i = 0; i < floorCount; i++) {
     floors.push(i)
 }
 floors.reverse()
 
 let shafts = [];
-for (let i = 0; i < projSettings.shaftCount; i++) {
+for (let i = 0; i < shaftCount; i++) {
     shafts.push(i);
 }
 
 let liftRef = ref([]);
 let queueOfCalls = reactive(new Set());
-
 let objLift = {};
 if (LOC_STOR.length == 0 || LOC_STOR.getItem('lifts') == 'null') {
-    for (let i = 0; i < projSettings.shaftCount; i++) {
+    for (let i = 0; i < shaftCount; i++) {
         objLift[i] = {
             atWork: false,
             direction: 0,
             nowFloor: 0,
-            nowFloorRender: projSettings.floorCount,
+            nowFloorRender: floorCount,
             targetFloor: 0,
         };
     }
@@ -53,29 +34,26 @@ if (LOC_STOR.length == 0 || LOC_STOR.getItem('lifts') == 'null') {
     for (let lift in objLift) {
         objLift[lift].atWork = false;
     }
-    // let queue = JSON.parse(LOC_STOR.getItem('queueOfCalls'));
-    // queue.forEach(item => {
-    //     let objCall = {
-    //         nowFloor: item[0],
-    //         event: item[1],
-    //     };
-    //     set.add(objCall);
-    // });
 }
+
 let lifts = reactive(objLift);
 
 window.addEventListener('unload', function () {
     LOC_STOR.setItem('lifts', JSON.stringify(lifts));
-    // LOC_STOR.setItem('queueOfCalls', JSON.stringify(Array.from(queueOfCalls)));
 })
 
+function importSettings(json) {
+    const projSettings = reactive(json);
+    return [+projSettings.floorCount, +projSettings.shaftCount];
+}
+
 function initial() {
-    for (let i = 0; i < projSettings.shaftCount; i++) {
+    for (let i = 0; i < shaftCount; i++) {
         lifts[i] = {
             atWork: false,
             direction: 0,
             nowFloor: 0,
-            nowFloorRender: projSettings.floorCount,
+            nowFloorRender: floorCount,
             targetFloor: 0,
         };
     }
@@ -108,7 +86,7 @@ async function moveLift(lift) {
     for (let i = counts; i > 0; i--) {
         await delay(1000);
         lifts[lift].nowFloor = lifts[lift].nowFloor + lifts[lift].direction;
-        lifts[lift].nowFloorRender = projSettings.floorCount - lifts[lift].nowFloor;
+        lifts[lift].nowFloorRender = floorCount - lifts[lift].nowFloor;
     }
 
     await stopWaiting(targetFloor, lift);
@@ -122,7 +100,7 @@ async function moveLift(lift) {
 }
 
 function getNearestFreeLift(button) {
-    let diff = projSettings.floorCount;
+    let diff = floorCount;
     let nearest = -1;
     for (const lift in lifts) {
         if (lifts[lift]['atWork']) {
@@ -167,10 +145,9 @@ function getDirection(from, to) {
                 <span :id="'btn_' + floor" className="btn" @click="callLift">Вызвать</span>
             </div>
         </div>
-
         <div className="liftShaft" v-for="shaft in shafts">
             <div className="liftExits" v-for="floor in floors">
-                <span :style="{ fontSize: 2 + 'rem' }">{{ floor + 1 }}</span>
+                <span>{{ floor + 1 }}</span>
             </div>
             <div ref="liftRef" className="lift"
                 :style="{ gridRowStart: lifts[shaft].nowFloorRender, gridRowEnd: lifts[shaft].nowFloorRender }">
@@ -179,52 +156,69 @@ function getDirection(from, to) {
                 <span v-else></span>
             </div>
         </div>
+
     </div>
-    <button @click="initial">Сбросить на начальные позиции</button>
-
-    <!-- <div>
-        <p>the font size is {{ settings.fontSize }}</p>
-        <button @click="handleToggleFontSizeClick">Switch</button>
-    </div> -->
-
+    <div :style="{marginTop: '15px'}">
+        <span id="btnInitial" @click="initial">Сбросить на начальные позиции</span>
+    </div>
 </template>
 
 <style scoped>
 .commonArea {
     display: flex;
+    gap: 3px;
     flex-direction: row;
-    /* border: solid 2px rgb(255, 255, 255); */
+    font-size: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#btnInitial {
+    cursor: pointer;
+    background-color: bisque;
+    padding: 7px;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#btnInitial:hover {
+    background-color: rgba(0, 198, 83, 0.508);
 }
 
 .floor {
-    border: solid 3px rgb(255, 255, 255);
+    border: solid 1px rgb(255, 241, 223);
     height: 40px;
+    justify-content: right;
+    align-items: center;
+    display: flex;
 }
 
 .callButtons {
-    display: flex;
-    flex-direction: column;
-    width: 10%;
-    border: solid 4px rgb(255, 255, 255);
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    grid-template-rows: repeat(v-bind('floorCount'), 40px);
+    grid-gap: 3px;
+    width: 15%;
 }
 
 .liftShaft {
     display: grid;
-    grid-template-rows: repeat(v-bind('projSettings.floorCount'), 46px);
-    width: 15%;
-    border: solid 4px rgb(255, 255, 255);
+    grid-template-rows: repeat(v-bind('floorCount'), 40px);
+    grid-gap: 3px;
+    width: 20%;
     position: relative;
 }
 
 .liftExits {
-    border: solid 3px rgb(101, 126, 216);
-    height: 43px;
+    border: solid 1px rgba(0, 198, 83, 0.508);
+    height: 40px;
+    font-size: 1.5rem;
+    align-items: center;
+    display: flex;
+    padding-left: 10px;
 }
 
 .lift {
-    background-color: rgba(49, 235, 127, 0.508);
+    background-color: rgba(0, 198, 83, 0.508);
     width: 100%;
     height: 100%;
     position: absolute;
@@ -253,6 +247,14 @@ function getDirection(from, to) {
     cursor: pointer;
     background-color: bisque;
     margin: 5px;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.initBtn {
+    margin: 3px;
+    font-size: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 @keyframes blink {
