@@ -156,7 +156,6 @@ function getDirection(from, to) {
                 <span v-else></span>
             </div>
         </div>
-
     </div>
     <div :style="{ marginTop: '15px' }">
         <span id="btnInitial" @click="initial">Сбросить на начальные позиции</span>
@@ -222,7 +221,6 @@ function getDirection(from, to) {
     width: 100%;
     height: 100%;
     position: absolute;
-
     display: flex;
     justify-content: center;
     align-items: center;
@@ -232,12 +230,10 @@ function getDirection(from, to) {
     width: 100%;
     height: 100%;
     position: absolute;
-
     animation-name: blink;
     animation-duration: 1.5s;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
-
     display: flex;
     justify-content: center;
     align-items: center;
@@ -278,12 +274,11 @@ function getDirection(from, to) {
     .commonArea {
         font-size: 1rem;
     }
-
 }
 
 @media screen and (max-width: 600px) {
     .commonArea {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
     }
 }
 </style>
